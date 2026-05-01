@@ -132,12 +132,7 @@ async function init() {
     startCountdown();
   });
 
-  document.getElementById('artwork-container').addEventListener('contextmenu', (e) => {
-    e.preventDefault();
-    window.artShow.showContextMenu();
-  });
-
-  document.getElementById('widget').addEventListener('contextmenu', (e) => {
+  document.addEventListener('contextmenu', (e) => {
     e.preventDefault();
     window.artShow.showContextMenu();
   });
