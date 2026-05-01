@@ -42,19 +42,27 @@ let mainWindow = null;
 let tray = null;
 let config = loadConfig();
 
-function clampToDisplay(x, y, w, h) {
+function isPointOnAnyDisplay(x, y) {
   const displays = screen.getAllDisplays();
   for (const display of displays) {
-    const { x: dx, y: dy, width: dw, height: dh } = display.workArea;
-    if (x + w > dx && x < dx + dw && y + h > dy && y < dy + dh) {
-      return {
-        x: Math.max(dx, Math.min(x, dx + dw - w)),
-        y: Math.max(dy, Math.min(y, dy + dh - h)),
-      };
+    const { x: dx, y: dy, width: dw, height: dh } = display.bounds;
+    if (x >= dx && x < dx + dw && y >= dy && y < dy + dh) {
+      return true;
     }
   }
+  return false;
+}
+
+function clampToDisplay(x, y, w, h) {
+  // If the saved center is on any display, use as-is
+  const cx = x + w / 2;
+  const cy = y + h / 2;
+  if (isPointOnAnyDisplay(cx, cy)) {
+    return { x, y };
+  }
+  // Otherwise fall back to primary display top-left
   const primary = screen.getPrimaryDisplay().workArea;
-  return { x: Math.min(x, primary.x + primary.width - w), y: Math.min(y, primary.y + primary.height - h) };
+  return { x: primary.x + 40, y: primary.y + 40 };
 }
 
 function createWindow() {

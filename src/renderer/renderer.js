@@ -137,7 +137,7 @@ async function init() {
     window.artShow.showContextMenu();
   });
 
-  document.getElementById('drag-handle').addEventListener('contextmenu', (e) => {
+  document.getElementById('widget').addEventListener('contextmenu', (e) => {
     e.preventDefault();
     window.artShow.showContextMenu();
   });
