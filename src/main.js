@@ -13,7 +13,7 @@ const DEFAULT_CONFIG = {
   windowY: undefined,
   windowWidth: 360,
   windowHeight: 480,
-  alwaysOnTop: true,
+  alwaysOnTop: false,
 };
 
 function loadConfig() {
@@ -94,7 +94,7 @@ function createWindow() {
     },
   });
 
-  mainWindow.setAlwaysOnTop(config.alwaysOnTop, 'floating');
+  mainWindow.setAlwaysOnTop(config.alwaysOnTop, 'normal');
   mainWindow.loadFile(path.join(__dirname, 'renderer', 'index.html'));
 
   // Block navigation away from local files
@@ -158,7 +158,7 @@ ipcMain.handle('set-interval', (_event, minutes) => {
 ipcMain.handle('toggle-always-on-top', () => {
   config.alwaysOnTop = !config.alwaysOnTop;
   if (mainWindow) {
-    mainWindow.setAlwaysOnTop(config.alwaysOnTop, 'floating');
+    mainWindow.setAlwaysOnTop(config.alwaysOnTop, 'normal');
   }
   saveConfig(config);
   return config.alwaysOnTop;
@@ -183,7 +183,7 @@ ipcMain.handle('show-context-menu', () => {
       label: config.alwaysOnTop ? 'Disable Always on Top' : 'Enable Always on Top',
       click: () => {
         config.alwaysOnTop = !config.alwaysOnTop;
-        if (mainWindow) mainWindow.setAlwaysOnTop(config.alwaysOnTop, 'floating');
+        if (mainWindow) mainWindow.setAlwaysOnTop(config.alwaysOnTop, 'normal');
         saveConfig(config);
       },
     },
