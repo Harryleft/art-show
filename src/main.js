@@ -13,7 +13,7 @@ const DEFAULT_CONFIG = {
   windowY: undefined,
   windowWidth: 360,
   windowHeight: 480,
-  alwaysOnTop: false,
+  alwaysOnTop: true,
 };
 
 function loadConfig() {
@@ -65,13 +65,26 @@ function clampToDisplay(x, y, w, h) {
   return { x: primary.x + 40, y: primary.y + 40 };
 }
 
+function applyWindowLayering(targetWindow, alwaysOnTop) {
+  if (typeof targetWindow.setSkipTaskbar === 'function') {
+    targetWindow.setSkipTaskbar(alwaysOnTop);
+  }
+
+  if (alwaysOnTop) {
+    targetWindow.setAlwaysOnTop(true, 'normal');
+    return;
+  }
+
+  targetWindow.setAlwaysOnTop(false);
+}
+
 function createWindow() {
   const { width: screenWidth, height: screenHeight } = screen.getPrimaryDisplay().workAreaSize;
   const w = config.windowWidth;
   const h = config.windowHeight;
   const { x, y } = clampToDisplay(config.windowX ?? 40, config.windowY ?? 40, w, h);
 
-  mainWindow = new BrowserWindow({
+  const windowOptions = {
     width: w,
     height: h,
     minWidth: 240,
@@ -82,8 +95,7 @@ function createWindow() {
     y,
     frame: false,
     transparent: true,
-    alwaysOnTop: config.alwaysOnTop,
-    skipTaskbar: true,
+    skipTaskbar: config.alwaysOnTop,
     hasShadow: false,
     resizable: true,
     webPreferences: {
@@ -92,9 +104,15 @@ function createWindow() {
       nodeIntegration: false,
       sandbox: true,
     },
-  });
+  };
 
-  mainWindow.setAlwaysOnTop(config.alwaysOnTop, 'normal');
+  if (config.alwaysOnTop) {
+    windowOptions.alwaysOnTop = true;
+  }
+
+  mainWindow = new BrowserWindow(windowOptions);
+
+  applyWindowLayering(mainWindow, config.alwaysOnTop);
   mainWindow.loadFile(path.join(__dirname, 'renderer', 'index.html'));
 
   // Block navigation away from local files
@@ -158,7 +176,7 @@ ipcMain.handle('set-interval', (_event, minutes) => {
 ipcMain.handle('toggle-always-on-top', () => {
   config.alwaysOnTop = !config.alwaysOnTop;
   if (mainWindow) {
-    mainWindow.setAlwaysOnTop(config.alwaysOnTop, 'normal');
+    applyWindowLayering(mainWindow, config.alwaysOnTop);
   }
   saveConfig(config);
   return config.alwaysOnTop;
@@ -183,7 +201,7 @@ ipcMain.handle('show-context-menu', () => {
       label: config.alwaysOnTop ? 'Disable Always on Top' : 'Enable Always on Top',
       click: () => {
         config.alwaysOnTop = !config.alwaysOnTop;
-        if (mainWindow) mainWindow.setAlwaysOnTop(config.alwaysOnTop, 'normal');
+        if (mainWindow) applyWindowLayering(mainWindow, config.alwaysOnTop);
         saveConfig(config);
       },
     },

@@ -1,16 +1,48 @@
 {
   "name": "art-show",
   "version": "1.0.0",
-  "description": "",
+  "description": "桌面艺术小组件 — 展示来自大都会美术馆的公开艺术品",
   "main": "src/main.js",
-  "scripts": {
-    "start": "electron .",
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "keywords": [],
   "author": "",
   "license": "ISC",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder --win",
+    "build:portable": "electron-builder --win portable",
+    "build:installer": "electron-builder --win nsis"
+  },
+  "build": {
+    "appId": "com.artshow.desktop",
+    "productName": "Art Show",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "src/**/*"
+    ],
+    "win": {
+      "signAndEditExecutable": false,
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        },
+        {
+          "target": "portable",
+          "arch": ["x64"]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": true,
+      "allowToChangeInstallationDirectory": false
+    },
+    "portable": {
+      "artifactName": "Art-Show-Portable-${version}.exe"
+    }
+  },
   "devDependencies": {
-    "electron": "^41.4.0"
+    "electron": "^41.4.0",
+    "electron-builder": "^26.8.1"
   }
 }
