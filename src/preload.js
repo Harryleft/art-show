@@ -5,6 +5,7 @@ contextBridge.exposeInMainWorld('artShow', {
   getNextArtwork: () => ipcRenderer.invoke('get-next-artwork'),
   setInterval: (minutes) => ipcRenderer.invoke('set-interval', minutes),
   toggleAlwaysOnTop: () => ipcRenderer.invoke('toggle-always-on-top'),
+  setKeywords: (keywords) => ipcRenderer.invoke('set-keywords', keywords),
   showContextMenu: () => ipcRenderer.invoke('show-context-menu'),
   onNextArtwork: (callback) => {
     const listener = (_event, ...args) => callback(...args);
@@ -15,5 +16,10 @@ contextBridge.exposeInMainWorld('artShow', {
     const listener = (_event, config) => callback(config);
     ipcRenderer.on('config-changed', listener);
     return () => ipcRenderer.removeListener('config-changed', listener);
+  },
+  onPromptKeywords: (callback) => {
+    const listener = (_event, keywords) => callback(keywords);
+    ipcRenderer.on('prompt-keywords', listener);
+    return () => ipcRenderer.removeListener('prompt-keywords', listener);
   },
 });

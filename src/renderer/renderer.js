@@ -118,6 +118,59 @@ function startCountdown() {
   }, totalSeconds * 1000);
 }
 
+function showKeywordInput(currentKeywords) {
+  // Defensive: ensure currentKeywords is always an array
+  const safeKeywords = Array.isArray(currentKeywords) ? currentKeywords : [];
+
+  const existing = document.getElementById('keyword-modal');
+  if (existing) existing.remove();
+
+  const modal = document.createElement('div');
+  modal.id = 'keyword-modal';
+  modal.innerHTML = `
+    <div id="keyword-backdrop"></div>
+    <div id="keyword-dialog">
+      <div id="keyword-title">Search Keywords</div>
+      <input id="keyword-input" type="text" placeholder="e.g. landscape, portrait, sunset">
+      <div id="keyword-hint">Comma-separated. Leave empty to use defaults.</div>
+      <div id="keyword-actions">
+        <button id="keyword-cancel">Cancel</button>
+        <button id="keyword-save">Save</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+
+  const input = document.getElementById('keyword-input');
+  input.value = safeKeywords.join(', ');
+  input.focus();
+  input.select();
+
+  const closeModal = () => modal.remove();
+
+  document.getElementById('keyword-cancel').addEventListener('click', closeModal);
+  document.getElementById('keyword-backdrop').addEventListener('click', closeModal);
+
+  let saving = false;
+  const save = async () => {
+    if (saving) return;
+    saving = true;
+    const keywords = input.value.split(',').map(k => k.trim()).filter(k => k.length > 0);
+    try {
+      await window.artShow.setKeywords(keywords);
+    } catch { /* ignore IPC errors */ }
+    closeModal();
+    // Refresh artwork so new keywords take effect immediately
+    loadArtwork();
+  };
+
+  document.getElementById('keyword-save').addEventListener('click', save);
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') save();
+    if (e.key === 'Escape') closeModal();
+  });
+}
+
 async function init() {
   try {
     currentConfig = await window.artShow.getConfig();
@@ -130,6 +183,10 @@ async function init() {
   window.artShow.onConfigChanged((newConfig) => {
     currentConfig = newConfig;
     startCountdown();
+  });
+
+  window.artShow.onPromptKeywords((currentKeywords) => {
+    showKeywordInput(currentKeywords);
   });
 
   document.addEventListener('contextmenu', (e) => {

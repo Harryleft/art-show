@@ -166,6 +166,92 @@ html, body {
   color: #aaa;
 }
 
+#keyword-modal {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#keyword-backdrop {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+}
+
+#keyword-dialog {
+  position: relative;
+  background: #1a1a1a;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 16px;
+  width: 85%;
+  z-index: 101;
+}
+
+#keyword-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #fff;
+  margin-bottom: 10px;
+}
+
+#keyword-input {
+  width: 100%;
+  padding: 6px 8px;
+  background: #111;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 4px;
+  color: #e0e0e0;
+  font-size: 12px;
+  outline: none;
+  font-family: inherit;
+}
+
+#keyword-input:focus {
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+#keyword-hint {
+  font-size: 10px;
+  color: #666;
+  margin-top: 6px;
+}
+
+#keyword-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+#keyword-actions button {
+  padding: 4px 14px;
+  border: none;
+  border-radius: 4px;
+  font-size: 11px;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+#keyword-cancel {
+  background: rgba(255, 255, 255, 0.06);
+  color: #aaa;
+}
+
+#keyword-save {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+}
+
 #progress-bar {
   height: 1px;
   background: transparent;

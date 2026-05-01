@@ -5,15 +5,16 @@ const { MetArtProvider } = require('./api/met-api');
 
 const CONFIG_PATH = path.join(app.getPath('userData'), 'art-show-config.json');
 const artProvider = new MetArtProvider();
-const VALID_INTERVALS = [5, 10, 15, 30];
+const VALID_INTERVALS = [1, 3, 5];
 
 const DEFAULT_CONFIG = {
-  interval: 10,
+  interval: 3,
   windowX: undefined,
   windowY: undefined,
   windowWidth: 360,
   windowHeight: 480,
   alwaysOnTop: true,
+  customKeywords: [],
 };
 
 function loadConfig() {
@@ -21,7 +22,16 @@ function loadConfig() {
     const data = fs.readFileSync(CONFIG_PATH, 'utf-8');
     const parsed = JSON.parse(data);
     const cfg = { ...DEFAULT_CONFIG, ...parsed };
-    if (!VALID_INTERVALS.includes(cfg.interval)) cfg.interval = 10;
+    if (!VALID_INTERVALS.includes(cfg.interval)) cfg.interval = 3;
+    // Validate customKeywords: must be an array of non-empty trimmed strings
+    if (!Array.isArray(cfg.customKeywords)) {
+      cfg.customKeywords = [];
+    } else {
+      cfg.customKeywords = cfg.customKeywords
+        .filter(k => typeof k === 'string' && k.trim().length > 0)
+        .map(k => k.trim())
+        .slice(0, 50);
+    }
     return cfg;
   } catch {
     return { ...DEFAULT_CONFIG };
@@ -41,6 +51,10 @@ function saveConfig(config) {
 let mainWindow = null;
 let tray = null;
 let config = loadConfig();
+
+if (Array.isArray(config.customKeywords) && config.customKeywords.length > 0) {
+  artProvider.setCustomKeywords(config.customKeywords);
+}
 
 function isPointOnAnyDisplay(x, y) {
   const displays = screen.getAllDisplays();
@@ -150,10 +164,9 @@ function createTray() {
 }
 
 const intervalOptions = [
+  { label: 'Every 1 min', value: 1 },
+  { label: 'Every 3 min', value: 3 },
   { label: 'Every 5 min', value: 5 },
-  { label: 'Every 10 min', value: 10 },
-  { label: 'Every 15 min', value: 15 },
-  { label: 'Every 30 min', value: 30 },
 ];
 
 ipcMain.handle('get-config', () => config);
@@ -182,6 +195,27 @@ ipcMain.handle('toggle-always-on-top', () => {
   return config.alwaysOnTop;
 });
 
+ipcMain.handle('set-keywords', (_event, keywords) => {
+  const MAX_KEYWORDS = 50;
+  const MAX_KEYWORD_LENGTH = 100;
+  const cleaned = Array.isArray(keywords)
+    ? keywords
+        .filter(k => typeof k === 'string' && k.trim().length > 0 && k.trim().length <= MAX_KEYWORD_LENGTH)
+        .map(k => k.trim().slice(0, MAX_KEYWORD_LENGTH))
+        // Case-insensitive dedup
+        .filter((k, i, arr) => arr.findIndex(x => x.toLowerCase() === k.toLowerCase()) === i)
+        .slice(0, MAX_KEYWORDS)
+    : [];
+  config.customKeywords = cleaned;
+  artProvider.setCustomKeywords(cleaned);
+  saveConfig(config);
+  return config.customKeywords;
+});
+
+ipcMain.handle('prompt-keywords', () => {
+  return config.customKeywords;
+});
+
 ipcMain.handle('show-context-menu', () => {
   const menu = Menu.buildFromTemplate([
     { label: 'Next Artwork', click: () => mainWindow?.webContents.send('next-artwork') },
@@ -204,6 +238,10 @@ ipcMain.handle('show-context-menu', () => {
         if (mainWindow) applyWindowLayering(mainWindow, config.alwaysOnTop);
         saveConfig(config);
       },
+    },
+    {
+      label: 'Set Keywords...',
+      click: () => mainWindow?.webContents.send('prompt-keywords', config.customKeywords),
     },
     { type: 'separator' },
     { label: 'Quit', click: () => app.quit() },

@@ -3,16 +3,18 @@ const https = require('https');
 const BASE_URL = 'https://collectionapi.metmuseum.org/public/collection/v1';
 const MAX_RESPONSE_SIZE = 5 * 1024 * 1024;
 const REQUEST_TIMEOUT_MS = 10000;
-const MIN_POOL_SIZE = 10;
 const MAX_FETCH_ATTEMPTS = 15;
-const DISPLAYED_HISTORY_LIMIT = 1000;
-const DISPLAYED_HISTORY_TRIM_COUNT = 500;
+const DISPLAYED_HISTORY_LIMIT = 5000;
+const DISPLAYED_HISTORY_TRIM_COUNT = 2000;
+const MIN_POOL_SIZE = 5;
 
 const SEARCH_KEYWORDS = [
   'light', 'water', 'portrait', 'landscape', 'gold', 'blue', 'red', 'sunset',
   'flowers', 'mountain', 'sea', 'forest', 'woman', 'man', 'child', 'city',
   'river', 'sky', 'moon', 'star', 'garden', 'winter', 'summer', 'spring',
   'autumn', 'horse', 'bird', 'tree', 'boat', 'rain', 'snow', 'fire',
+  'architecture', 'music', 'dance', 'love', 'war', 'peace', 'night', 'dream',
+  'angel', 'sword', 'shield', 'castle', 'bridge', 'harbor', 'market', 'temple',
 ];
 
 function normalizeObjectId(id) {
@@ -101,10 +103,6 @@ function fetchJSON(url) {
   });
 }
 
-function getRandomKeyword() {
-  return SEARCH_KEYWORDS[Math.floor(Math.random() * SEARCH_KEYWORDS.length)];
-}
-
 class MetArtProvider {
   constructor() {
     this.pool = [];
@@ -115,6 +113,51 @@ class MetArtProvider {
     this.prefetchId = null;
     this.refillPromise = null;
     this.nextPromise = Promise.resolve();
+    this.usedKeywords = [];
+    this.customKeywords = [];
+    this._keywordVersion = 0;
+  }
+
+  setCustomKeywords(keywords) {
+    this.customKeywords = Array.isArray(keywords) ? keywords.filter(k => typeof k === 'string' && k.trim()) : [];
+    this.usedKeywords = [];
+    // Clear pool and prefetch state so stale results from old keywords
+    // do not continue to appear or get written back by in-flight promises.
+    this.pool = [];
+    this.poolIds = new Set();
+    this.prefetched = null;
+    this.prefetchPromise = null;
+    this.prefetchId = null;
+    this.refillPromise = null;
+    // Bump version so any in-flight refill/prefetch can detect it's stale.
+    this._keywordVersion = (this._keywordVersion || 0) + 1;
+  }
+
+  getKeywords() {
+    return this.customKeywords.length > 0 ? this.customKeywords : SEARCH_KEYWORDS;
+  }
+
+  pickKeyword() {
+    const pool = this.getKeywords();
+    const available = pool.filter(k => !this.usedKeywords.includes(k));
+    if (available.length > 0) {
+      const keyword = available[Math.floor(Math.random() * available.length)];
+      this.usedKeywords.push(keyword);
+      return keyword;
+    }
+    // All keywords used — reset rotation.
+    // Keep at most half (rounded down) of the pool as "recent" to avoid
+    // immediate repeats, but never keep more than we have keywords.
+    const keepCount = Math.min(5, Math.max(0, Math.floor(pool.length / 2) - 1));
+    const recent = this.usedKeywords.slice(-keepCount);
+    this.usedKeywords = [...recent];
+    const fresh = pool.filter(k => !recent.includes(k));
+    // If fresh is still empty (pool has 0 or 1 keyword), fall back to full pool
+    if (fresh.length === 0) {
+      this.usedKeywords = [];
+      return pool[Math.floor(Math.random() * pool.length)];
+    }
+    return fresh[Math.floor(Math.random() * fresh.length)];
   }
 
   async refillPool() {
@@ -132,9 +175,13 @@ class MetArtProvider {
   }
 
   async refillPoolOnce() {
-    const keyword = getRandomKeyword();
+    const versionAtStart = this._keywordVersion || 0;
+    const keyword = this.pickKeyword();
     const url = `${BASE_URL}/search?q=${encodeURIComponent(keyword)}&hasImages=true&isPublicDomain=true&resultsPerPage=100`;
     const result = await fetchJSON(url);
+
+    // If keywords changed while we were fetching, discard stale results.
+    if (this._keywordVersion !== versionAtStart) return;
 
     this.addToPool(result?.objectIDs);
   }
@@ -160,11 +207,13 @@ class MetArtProvider {
       }
 
       if (this.pool.length < MIN_POOL_SIZE) {
-        await this.ensurePool(MIN_POOL_SIZE);
+        await this.refillPool();
       }
 
       if (this.pool.length === 0) {
-        await this.ensurePool(1);
+        // Pool still empty after refill — try one more time with a fresh keyword
+        this.usedKeywords = [];
+        await this.refillPool();
         if (this.pool.length === 0) return null;
       }
 
@@ -259,7 +308,6 @@ class MetArtProvider {
     const artwork = this.prefetched;
     this.prefetched = null;
 
-    // 兼容旧状态或测试直接写入 prefetched 的情况，避免同一 ID 留在 pool 里。
     this.removePoolId(artwork.objectID);
 
     if (!this.isDisplayableArtwork(artwork)) {
@@ -273,19 +321,6 @@ class MetArtProvider {
     this.rememberDisplayed(artwork.objectID);
     this.prefetchNext();
     return this.formatArtwork(artwork);
-  }
-
-  async ensurePool(minSize) {
-    this.syncPoolIds();
-    if (this.pool.length >= minSize) {
-      return;
-    }
-
-    try {
-      await this.refillPool();
-    } catch {
-      // API 临时失败时让 getNext 返回 null 或尝试现有池，避免主进程收到异常。
-    }
   }
 
   addToPool(objectIds) {
