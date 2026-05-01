@@ -11,45 +11,51 @@ let currentConfig = { interval: 10 };
 let countdownTimer = null;
 let progressTimer = null;
 let countdownSeconds = 0;
-let retryCount = 0;
+let retryTimer = null;
+let currentLoadId = 0;
+
+function clearTimers() {
+  if (countdownTimer) clearTimeout(countdownTimer);
+  if (progressTimer) clearInterval(progressTimer);
+  if (retryTimer) clearTimeout(retryTimer);
+  countdownTimer = null;
+  progressTimer = null;
+  retryTimer = null;
+}
 
 async function loadArtwork() {
+  clearTimers();
+  const loadId = ++currentLoadId;
   loading.classList.remove('hidden');
   errorOverlay.classList.add('hidden');
 
   try {
     const artwork = await window.artShow.getNextArtwork();
+    if (loadId !== currentLoadId) return;
+
     if (!artwork) {
-      retryCount++;
-      if (retryCount < 3) {
-        setTimeout(loadArtwork, 2000);
-        return;
-      }
-      errorOverlay.classList.remove('hidden');
-      loading.classList.add('hidden');
+      retryTimer = setTimeout(loadArtwork, 3000);
       return;
     }
 
-    retryCount = 0;
     const imageUrl = artwork.imageSmall || artwork.imageUrl;
     await loadImage(imageUrl);
+    if (loadId !== currentLoadId) return;
+
     displayInfo(artwork);
     startCountdown();
 
     // Background load HD image
     if (artwork.imageSmall && artwork.imageUrl !== artwork.imageSmall) {
       const hd = new Image();
-      hd.onload = () => { img.src = artwork.imageUrl; };
+      hd.onload = () => {
+        if (loadId === currentLoadId) img.src = artwork.imageUrl;
+      };
       hd.src = artwork.imageUrl;
     }
-  } catch (err) {
-    retryCount++;
-    if (retryCount < 3) {
-      setTimeout(loadArtwork, 3000);
-      return;
-    }
-    errorOverlay.classList.remove('hidden');
-    loading.classList.add('hidden');
+  } catch {
+    if (loadId !== currentLoadId) return;
+    retryTimer = setTimeout(loadArtwork, 5000);
   }
 }
 
@@ -59,7 +65,6 @@ function loadImage(url) {
     img.classList.add('fading');
 
     const timeout = setTimeout(() => {
-      loading.classList.add('hidden');
       reject(new Error('Image load timeout'));
     }, 20000);
 
@@ -89,7 +94,7 @@ function displayInfo(artwork) {
 }
 
 function startCountdown() {
-  if (countdownTimer) clearInterval(countdownTimer);
+  if (countdownTimer) clearTimeout(countdownTimer);
   if (progressTimer) clearInterval(progressTimer);
 
   countdownSeconds = currentConfig.interval * 60;

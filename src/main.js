@@ -5,6 +5,8 @@ const { MetArtProvider } = require('./api/met-api');
 
 const CONFIG_PATH = path.join(app.getPath('userData'), 'art-show-config.json');
 const artProvider = new MetArtProvider();
+const VALID_INTERVALS = [5, 10, 15, 30];
+
 const DEFAULT_CONFIG = {
   interval: 10,
   windowX: undefined,
@@ -17,31 +19,53 @@ const DEFAULT_CONFIG = {
 function loadConfig() {
   try {
     const data = fs.readFileSync(CONFIG_PATH, 'utf-8');
-    return { ...DEFAULT_CONFIG, ...JSON.parse(data) };
+    const parsed = JSON.parse(data);
+    const cfg = { ...DEFAULT_CONFIG, ...parsed };
+    if (!VALID_INTERVALS.includes(cfg.interval)) cfg.interval = 10;
+    return cfg;
   } catch {
     return { ...DEFAULT_CONFIG };
   }
 }
 
+let saveTimer = null;
 function saveConfig(config) {
-  try {
-    fs.writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2));
-  } catch {}
+  if (saveTimer) clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => {
+    try {
+      fs.writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2));
+    } catch {}
+  }, 500);
 }
 
 let mainWindow = null;
 let tray = null;
 let config = loadConfig();
 
+function clampToDisplay(x, y, w, h) {
+  const displays = screen.getAllDisplays();
+  for (const display of displays) {
+    const { x: dx, y: dy, width: dw, height: dh } = display.workArea;
+    if (x + w > dx && x < dx + dw && y + h > dy && y < dy + dh) {
+      return {
+        x: Math.max(dx, Math.min(x, dx + dw - w)),
+        y: Math.max(dy, Math.min(y, dy + dh - h)),
+      };
+    }
+  }
+  const primary = screen.getPrimaryDisplay().workArea;
+  return { x: Math.min(x, primary.x + primary.width - w), y: Math.min(y, primary.y + primary.height - h) };
+}
+
 function createWindow() {
   const { width: screenWidth, height: screenHeight } = screen.getPrimaryDisplay().workAreaSize;
-
-  const x = config.windowX ?? 40;
-  const y = config.windowY ?? 40;
+  const w = config.windowWidth;
+  const h = config.windowHeight;
+  const { x, y } = clampToDisplay(config.windowX ?? 40, config.windowY ?? 40, w, h);
 
   mainWindow = new BrowserWindow({
-    width: config.windowWidth,
-    height: config.windowHeight,
+    width: w,
+    height: h,
     minWidth: 240,
     minHeight: 320,
     maxWidth: 600,
@@ -58,11 +82,16 @@ function createWindow() {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
       nodeIntegration: false,
+      sandbox: true,
     },
   });
 
   mainWindow.setAlwaysOnTop(config.alwaysOnTop, 'floating');
   mainWindow.loadFile(path.join(__dirname, 'renderer', 'index.html'));
+
+  // Block navigation away from local files
+  mainWindow.webContents.on('will-navigate', (e) => e.preventDefault());
+  mainWindow.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
 
   mainWindow.on('resize', () => {
     const [w, h] = mainWindow.getSize();
@@ -105,15 +134,15 @@ ipcMain.handle('get-config', () => config);
 
 ipcMain.handle('get-next-artwork', async () => {
   try {
-    const artwork = await artProvider.getNext();
-    return artwork;
-  } catch (err) {
+    return await artProvider.getNext();
+  } catch {
     return null;
   }
 });
 
 ipcMain.handle('set-interval', (_event, minutes) => {
-  config.interval = minutes;
+  const valid = VALID_INTERVALS.includes(minutes) ? minutes : 10;
+  config.interval = valid;
   saveConfig(config);
   return config;
 });

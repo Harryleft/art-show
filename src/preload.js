@@ -6,6 +6,14 @@ contextBridge.exposeInMainWorld('artShow', {
   setInterval: (minutes) => ipcRenderer.invoke('set-interval', minutes),
   toggleAlwaysOnTop: () => ipcRenderer.invoke('toggle-always-on-top'),
   showContextMenu: () => ipcRenderer.invoke('show-context-menu'),
-  onNextArtwork: (callback) => ipcRenderer.on('next-artwork', callback),
-  onConfigChanged: (callback) => ipcRenderer.on('config-changed', (_event, config) => callback(config)),
+  onNextArtwork: (callback) => {
+    const listener = (_event, ...args) => callback(...args);
+    ipcRenderer.on('next-artwork', listener);
+    return () => ipcRenderer.removeListener('next-artwork', listener);
+  },
+  onConfigChanged: (callback) => {
+    const listener = (_event, config) => callback(config);
+    ipcRenderer.on('config-changed', listener);
+    return () => ipcRenderer.removeListener('config-changed', listener);
+  },
 });

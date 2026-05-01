@@ -11,9 +11,21 @@ const SEARCH_KEYWORDS = [
 
 function fetchJSON(url) {
   return new Promise((resolve, reject) => {
-    https.get(url, (res) => {
+    const req = https.get(url, (res) => {
+      if (res.statusCode < 200 || res.statusCode >= 300) {
+        reject(new Error(`HTTP ${res.statusCode}`));
+        req.destroy();
+        return;
+      }
       let data = '';
-      res.on('data', (chunk) => data += chunk);
+      const MAX_SIZE = 5 * 1024 * 1024;
+      res.on('data', (chunk) => {
+        data += chunk;
+        if (data.length > MAX_SIZE) {
+          reject(new Error('Response too large'));
+          req.destroy();
+        }
+      });
       res.on('end', () => {
         try {
           resolve(JSON.parse(data));
@@ -21,7 +33,12 @@ function fetchJSON(url) {
           reject(new Error(`JSON parse error: ${e.message}`));
         }
       });
-    }).on('error', reject);
+    });
+    req.on('error', reject);
+    req.setTimeout(10000, () => {
+      reject(new Error('Request timeout'));
+      req.destroy();
+    });
   });
 }
 
@@ -69,8 +86,24 @@ class MetArtProvider {
       await this.refillPool();
     }
 
+    const maxAttempts = 15;
     let attempts = 0;
-    while (this.pool.length > 0 && attempts < 5) {
+
+    while (attempts < maxAttempts) {
+      // Consume prefetched result first
+      if (this.prefetched) {
+        const artwork = this.prefetched;
+        this.prefetched = null;
+        this.displayedIds.add(artwork.objectID);
+        this.prefetchNext();
+        return this.formatArtwork(artwork);
+      }
+
+      if (this.pool.length === 0) {
+        await this.refillPool();
+        if (this.pool.length === 0) return null;
+      }
+
       const id = this.pool.shift();
       attempts++;
 
@@ -84,26 +117,29 @@ class MetArtProvider {
         this.displayedIds.add(id);
         this.prefetchNext();
 
-        return {
-          id: artwork.objectID,
-          title: artwork.title || 'Untitled',
-          artist: artwork.artistDisplayName || 'Unknown Artist',
-          date: artwork.objectDate || '',
-          medium: artwork.medium || '',
-          department: artwork.department || '',
-          museum: 'The Metropolitan Museum of Art',
-          imageUrl: artwork.primaryImage,
-          imageSmall: artwork.primaryImageSmall || artwork.primaryImage,
-          artistUrl: artwork.artistWikidata_URL || '',
-          objectUrl: artwork.objectURL || `https://www.metmuseum.org/art/collection/search/${artwork.objectID}`,
-        };
+        return this.formatArtwork(artwork);
       } catch {
         continue;
       }
     }
 
-    await this.refillPool();
     return null;
+  }
+
+  formatArtwork(artwork) {
+    return {
+      id: artwork.objectID,
+      title: artwork.title || 'Untitled',
+      artist: artwork.artistDisplayName || 'Unknown Artist',
+      date: artwork.objectDate || '',
+      medium: artwork.medium || '',
+      department: artwork.department || '',
+      museum: 'The Metropolitan Museum of Art',
+      imageUrl: artwork.primaryImage,
+      imageSmall: artwork.primaryImageSmall || artwork.primaryImage,
+      artistUrl: artwork.artistWikidata_URL || '',
+      objectUrl: artwork.objectURL || `https://www.metmuseum.org/art/collection/search/${artwork.objectID}`,
+    };
   }
 
   async prefetchNext() {
