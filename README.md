@@ -2,6 +2,10 @@
 
 > _「让美术馆住进你的桌面」_
 
+<p align="center">
+  <img src="logo/logo.png" alt="Art Show Logo" width="128" height="128">
+</p>
+
 ![License: ISC](https://img.shields.io/badge/License-ISC-yellow.svg)
 ![Electron](https://img.shields.io/badge/Electron-41-blue.svg)
 ![Platform](https://img.shields.io/badge/Platform-Windows-informational.svg)

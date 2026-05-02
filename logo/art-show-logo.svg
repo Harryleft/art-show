@@ -1,0 +1,81 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <defs>
+    <!-- Background gradient -->
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1a1a2e;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#16213e;stop-opacity:1" />
+    </linearGradient>
+    <!-- Frame gradient -->
+    <linearGradient id="frameGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#e2b714;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#f0d060;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#c9a20a;stop-opacity:1" />
+    </linearGradient>
+    <!-- Artwork gradient -->
+    <linearGradient id="artGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#e74c3c;stop-opacity:1" />
+      <stop offset="35%" style="stop-color:#3498db;stop-opacity:1" />
+      <stop offset="65%" style="stop-color:#2ecc71;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#9b59b6;stop-opacity:1" />
+    </linearGradient>
+    <!-- Shadow filter -->
+    <filter id="shadow" x="-10%" y="-10%" width="130%" height="130%">
+      <feDropShadow dx="2" dy="3" stdDeviation="4" flood-color="#000" flood-opacity="0.35"/>
+    </filter>
+    <filter id="innerGlow" x="-5%" y="-5%" width="110%" height="110%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="1"/>
+    </filter>
+  </defs>
+
+  <!-- Rounded square background -->
+  <rect x="8" y="8" width="240" height="240" rx="32" ry="32" fill="url(#bgGrad)" filter="url(#shadow)"/>
+
+  <!-- Outer frame -->
+  <rect x="36" y="36" width="184" height="184" rx="4" ry="4" fill="none" stroke="url(#frameGrad)" stroke-width="6"/>
+
+  <!-- Inner frame mat (light cream) -->
+  <rect x="48" y="48" width="160" height="160" rx="2" ry="2" fill="#f5f0e8"/>
+
+  <!-- Abstract artwork - colorful geometric painting -->
+  <clipPath id="artClip">
+    <rect x="56" y="56" width="144" height="144" rx="1"/>
+  </clipPath>
+  <g clip-path="url(#artClip)">
+    <!-- Artwork background -->
+    <rect x="56" y="56" width="144" height="144" fill="#faf8f2"/>
+    
+    <!-- Abstract landscape shapes -->
+    <!-- Sky -->
+    <rect x="56" y="56" width="144" height="80" fill="#87CEEB" opacity="0.6"/>
+    <circle cx="170" cy="75" r="14" fill="#f4d03f" opacity="0.8"/>
+    
+    <!-- Mountains -->
+    <polygon points="56,136 100,90 144,136" fill="#5b8c5a" opacity="0.7"/>
+    <polygon points="100,136 155,85 200,136" fill="#3d6b3d" opacity="0.8"/>
+    
+    <!-- Ground -->
+    <rect x="56" y="136" width="144" height="64" fill="#7dcea0" opacity="0.5"/>
+    
+    <!-- Abstract color blocks (modern art style) -->
+    <rect x="70" y="68" width="30" height="20" fill="#e74c3c" opacity="0.4" rx="2"/>
+    <rect x="120" y="100" width="40" height="25" fill="#3498db" opacity="0.35" rx="3"/>
+    <rect x="80" y="145" width="25" height="30" fill="#9b59b6" opacity="0.3" rx="2"/>
+    <rect x="145" y="155" width="35" height="20" fill="#f39c12" opacity="0.4" rx="2"/>
+    
+    <!-- Brush stroke lines -->
+    <line x1="65" y1="110" x2="130" y2="110" stroke="#2c3e50" stroke-width="1.5" opacity="0.2"/>
+    <line x1="90" y1="125" x2="190" y2="125" stroke="#2c3e50" stroke-width="1" opacity="0.15"/>
+  </g>
+
+  <!-- Frame highlight (top-left light reflection) -->
+  <line x1="38" y1="38" x2="222" y2="38" stroke="#fff" stroke-width="1" opacity="0.2"/>
+  <line x1="38" y1="38" x2="38" y2="222" stroke="#fff" stroke-width="1" opacity="0.2"/>
+  
+  <!-- Subtle sparkle/star near top right corner of frame -->
+  <g transform="translate(210, 42)" opacity="0.7">
+    <line x1="-4" y1="0" x2="4" y2="0" stroke="#f0d060" stroke-width="1.2"/>
+    <line x1="0" y1="-4" x2="0" y2="4" stroke="#f0d060" stroke-width="1.2"/>
+    <line x1="-2.5" y1="-2.5" x2="2.5" y2="2.5" stroke="#f0d060" stroke-width="0.8"/>
+    <line x1="2.5" y1="-2.5" x2="-2.5" y2="2.5" stroke="#f0d060" stroke-width="0.8"/>
+  </g>
+</svg>
