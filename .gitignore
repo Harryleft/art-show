@@ -7,10 +7,14 @@ Thumbs.db
 # Tests
 tests/
 .pytest_cache/
+__pycache__/
+*.pyc
 
-# Docs & review
+# Docs & process files
 diss/
+docs/
 CLAUDE.md
 
 # IDE
 .gstack/
+.claude/
