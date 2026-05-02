@@ -13,6 +13,15 @@ let progressTimer = null;
 let countdownSeconds = 0;
 let retryTimer = null;
 let currentLoadId = 0;
+let consecutiveFailures = 0;
+const MAX_CONSECUTIVE_FAILURES = 5;
+
+function withTimeout(promise, ms) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), ms)),
+  ]);
+}
 
 function clearTimers() {
   if (countdownTimer) clearTimeout(countdownTimer);
@@ -30,11 +39,16 @@ async function loadArtwork() {
   errorOverlay.classList.add('hidden');
 
   try {
-    const artwork = await window.artShow.getNextArtwork();
+    const artwork = await withTimeout(window.artShow.getNextArtwork(), 30000);
     if (loadId !== currentLoadId) return;
 
     if (!artwork) {
-      retryTimer = setTimeout(loadArtwork, 3000);
+      consecutiveFailures++;
+      loading.classList.add('hidden');
+      if (consecutiveFailures <= MAX_CONSECUTIVE_FAILURES) {
+        errorOverlay.classList.remove('hidden');
+        retryTimer = setTimeout(loadArtwork, 3000);
+      }
       return;
     }
 
@@ -42,6 +56,7 @@ async function loadArtwork() {
     await loadImage(imageUrl);
     if (loadId !== currentLoadId) return;
 
+    consecutiveFailures = 0;
     displayInfo(artwork);
     startCountdown();
 
@@ -55,7 +70,12 @@ async function loadArtwork() {
     }
   } catch {
     if (loadId !== currentLoadId) return;
-    retryTimer = setTimeout(loadArtwork, 5000);
+    consecutiveFailures++;
+    loading.classList.add('hidden');
+    if (consecutiveFailures <= MAX_CONSECUTIVE_FAILURES) {
+      errorOverlay.classList.remove('hidden');
+      retryTimer = setTimeout(loadArtwork, 5000);
+    }
   }
 }
 
@@ -64,11 +84,13 @@ function loadImage(url) {
     img.classList.remove('loaded');
     img.classList.add('fading');
 
+    const tempImg = new Image();
     const timeout = setTimeout(() => {
+      tempImg.onload = null;
+      tempImg.onerror = null;
       reject(new Error('Image load timeout'));
     }, 20000);
 
-    const tempImg = new Image();
     tempImg.onload = () => {
       clearTimeout(timeout);
       img.src = url;
@@ -161,6 +183,7 @@ function showKeywordInput(currentKeywords) {
     } catch { /* ignore IPC errors */ }
     closeModal();
     // Refresh artwork so new keywords take effect immediately
+    consecutiveFailures = 0;
     loadArtwork();
   };
 

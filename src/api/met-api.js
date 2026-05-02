@@ -198,9 +198,13 @@ class MetArtProvider {
   }
 
   async getNextSerial() {
+    const versionAtStart = this._keywordVersion;
     let attempts = 0;
+    let customKeywordFailed = false;
 
     while (attempts < MAX_FETCH_ATTEMPTS) {
+      if (this._keywordVersion !== versionAtStart) return null;
+
       const prefetchedArtwork = await this.consumePrefetched();
       if (prefetchedArtwork) {
         return this.finalizeArtwork(prefetchedArtwork);
@@ -214,6 +218,18 @@ class MetArtProvider {
         // Pool still empty after refill — try one more time with a fresh keyword
         this.usedKeywords = [];
         await this.refillPool();
+        if (this.pool.length === 0 && this.customKeywords.length > 0 && !customKeywordFailed) {
+          // Custom keywords produced no results — fall back to defaults
+          customKeywordFailed = true;
+          const savedCustom = this.customKeywords;
+          this.customKeywords = [];
+          this.usedKeywords = [];
+          try {
+            await this.refillPool();
+          } finally {
+            this.customKeywords = savedCustom;
+          }
+        }
         if (this.pool.length === 0) return null;
       }
 
@@ -283,8 +299,10 @@ class MetArtProvider {
   }
 
   async fetchPrefetchedArtwork(id) {
+    const versionAtStart = this._keywordVersion;
     try {
       const artwork = await this.fetchArtwork(id);
+      if (this._keywordVersion !== versionAtStart) return null;
       if (this.isDisplayableArtwork(artwork, id)) {
         this.prefetched = artwork;
         return artwork;
@@ -297,8 +315,15 @@ class MetArtProvider {
   }
 
   async consumePrefetched() {
+    const versionAtEntry = this._keywordVersion;
+
     if (this.prefetchPromise) {
       await this.prefetchPromise;
+    }
+
+    if (this._keywordVersion !== versionAtEntry) {
+      this.prefetched = null;
+      return null;
     }
 
     if (!this.prefetched) {
