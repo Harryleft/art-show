@@ -32,8 +32,34 @@ html, body {
   flex: 1;
   position: relative;
   overflow: hidden;
-  background: transparent;
+  background: rgba(26, 22, 18, 0.65);
   -webkit-app-region: drag;
+}
+
+/* Classic gold picture frame overlay */
+#artwork-container::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+
+  /* 3D gold frame achieved through layered inset box-shadows.
+     Each layer adds a band of the frame, alternating dark/light
+     to simulate a beveled gilded surface. */
+  box-shadow:
+    /* Inner rabbet — shadow from the frame lip onto the mat */
+    inset 0 0 4px rgba(0, 0, 0, 0.5),
+    /* Frame body — alternating dark/light bands for bevel illusion */
+    inset 0 0 0 2px #2a1a00,
+    inset 0 0 0 5px #7a5e1a,
+    inset 0 0 0 8px #c9a84c,
+    inset 0 0 0 11px #d4af37,
+    inset 0 0 0 14px #b8942e,
+    inset 0 0 0 17px #f0d68a,
+    inset 0 0 0 19px #5a4210,
+    /* Subtle drop shadow against the desktop background */
+    0 3px 8px rgba(0, 0, 0, 0.2);
 }
 
 /* When hovering, switch to no-drag so info overlay works */
@@ -47,6 +73,7 @@ html, body {
   left: 0;
   width: 100%;
   height: 100%;
+  padding: 20px;
   object-fit: contain;
   opacity: 0;
   transition: opacity 0.4s ease;
