@@ -53,8 +53,13 @@ async function loadArtwork() {
     }
 
     const imageUrl = artwork.imageSmall || artwork.imageUrl;
-    await loadImage(imageUrl);
+    const result = await loadImage(imageUrl);
     if (loadId !== currentLoadId) return;
+
+    // Resize window to match image aspect ratio
+    if (result && result.width && result.height) {
+      window.artShow.adjustWindowSize(result.width, result.height);
+    }
 
     consecutiveFailures = 0;
     displayInfo(artwork);
@@ -97,7 +102,7 @@ function loadImage(url) {
       img.classList.remove('fading');
       img.classList.add('loaded');
       loading.classList.add('hidden');
-      resolve();
+      resolve({ width: tempImg.naturalWidth, height: tempImg.naturalHeight });
     };
     tempImg.onerror = () => {
       clearTimeout(timeout);

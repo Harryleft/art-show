@@ -175,7 +175,44 @@ const intervalOptions = [
   { label: 'Every 5 min', value: 5 },
 ];
 
-ipcMain.handle('get-config', () => config);
+ipcMain.handle('adjust-window-size', (_event, imgWidth, imgHeight) => {
+    if (!mainWindow || !imgWidth || !imgHeight) return;
+    if (typeof imgWidth !== 'number' || typeof imgHeight !== 'number' || imgWidth <= 0 || imgHeight <= 0) return;
+
+    const aspectRatio = imgWidth / imgHeight;
+    const [currW, currH] = mainWindow.getSize();
+    const MIN_W = 240, MIN_H = 320, MAX_W = 600, MAX_H = 800;
+
+    // Start from current height, derive width from image aspect ratio
+    let newW = Math.round(currH * aspectRatio);
+    let newH = currH;
+
+    // Constrain width → recalculate height if needed
+    if (newW > MAX_W) {
+      newW = MAX_W;
+      newH = Math.round(newW / aspectRatio);
+    } else if (newW < MIN_W) {
+      newW = MIN_W;
+      newH = Math.round(newW / aspectRatio);
+    }
+
+    // Then constrain height → recalculate width if needed
+    if (newH > MAX_H) {
+      newH = MAX_H;
+      newW = Math.round(newH * aspectRatio);
+    } else if (newH < MIN_H) {
+      newH = MIN_H;
+      newW = Math.round(newH * aspectRatio);
+    }
+
+    // Final clamp on both dimensions
+    newW = Math.max(MIN_W, Math.min(MAX_W, newW));
+    newH = Math.max(MIN_H, Math.min(MAX_H, newH));
+
+    mainWindow.setSize(newW, newH);
+  });
+
+  ipcMain.handle('get-config', () => config);
 
 ipcMain.handle('get-next-artwork', async () => {
   try {

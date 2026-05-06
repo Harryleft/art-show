@@ -7,6 +7,7 @@ contextBridge.exposeInMainWorld('artShow', {
   toggleAlwaysOnTop: () => ipcRenderer.invoke('toggle-always-on-top'),
   setKeywords: (keywords) => ipcRenderer.invoke('set-keywords', keywords),
   showContextMenu: () => ipcRenderer.invoke('show-context-menu'),
+  adjustWindowSize: (width, height) => ipcRenderer.invoke('adjust-window-size', width, height),
   onNextArtwork: (callback) => {
     const listener = (_event, ...args) => callback(...args);
     ipcRenderer.on('next-artwork', listener);
