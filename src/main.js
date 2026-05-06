@@ -43,7 +43,9 @@ function saveConfig(config) {
   if (saveTimer) clearTimeout(saveTimer);
   saveTimer = setTimeout(() => {
     try {
-      fs.writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2));
+      // Persist displayed IDs across sessions to avoid immediate repeats on restart
+      const data = { ...config, displayedIds: artProvider.getDisplayedIds() };
+      fs.writeFileSync(CONFIG_PATH, JSON.stringify(data, null, 2));
     } catch {}
   }, 500);
 }
@@ -54,6 +56,10 @@ let config = loadConfig();
 
 if (Array.isArray(config.customKeywords) && config.customKeywords.length > 0) {
   artProvider.setCustomKeywords(config.customKeywords);
+}
+// Restore previously displayed IDs so restarts don't immediately repeat artwork.
+if (Array.isArray(config.displayedIds)) {
+  artProvider.loadDisplayedIds(config.displayedIds);
 }
 
 function isPointOnAnyDisplay(x, y) {
@@ -173,7 +179,10 @@ ipcMain.handle('get-config', () => config);
 
 ipcMain.handle('get-next-artwork', async () => {
   try {
-    return await artProvider.getNext();
+    const artwork = await artProvider.getNext();
+    // Persist displayed IDs so restarts don't repeat artwork
+    if (artwork) saveConfig(config);
+    return artwork;
   } catch {
     return null;
   }
@@ -260,4 +269,13 @@ app.on('window-all-closed', () => {
 
 app.on('activate', () => {
   if (BrowserWindow.getAllWindows().length === 0) createWindow();
+});
+
+// Save displayedIds on quit so restart doesn't repeat recent artwork
+app.on('before-quit', () => {
+  if (saveTimer) clearTimeout(saveTimer);
+  try {
+    const data = { ...config, displayedIds: artProvider.getDisplayedIds() };
+    fs.writeFileSync(CONFIG_PATH, JSON.stringify(data, null, 2));
+  } catch {}
 });

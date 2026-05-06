@@ -8,6 +8,30 @@ const DISPLAYED_HISTORY_LIMIT = 5000;
 const DISPLAYED_HISTORY_TRIM_COUNT = 2000;
 const MIN_POOL_SIZE = 5;
 
+// Art historical periods used for random year-range searches.
+// Each refill picks a random sub-range within a random period so the
+// same keyword returns different object IDs on different calls.
+const ART_PERIODS = [
+  [-5000, -3000],  // Neolithic
+  [-3000, -1000],  // Bronze Age
+  [-1000, -500],   // Iron Age
+  [-500, 0],       // Classical Antiquity
+  [0, 500],        // Late Antiquity
+  [500, 1000],     // Early Medieval
+  [1000, 1300],    // High Medieval
+  [1300, 1500],    // Late Medieval / Early Renaissance
+  [1500, 1600],    // Renaissance
+  [1600, 1700],    // Baroque
+  [1700, 1750],    // Rococo
+  [1750, 1800],    // Neoclassical
+  [1800, 1850],    // Romanticism
+  [1850, 1900],    // Impressionism / Post-Impressionism
+  [1900, 1930],    // Modernism
+  [1930, 1960],    // Mid-Century
+  [1960, 2000],    // Contemporary
+  [2000, 2025],    // 21st Century
+];
+
 const SEARCH_KEYWORDS = [
   'light', 'water', 'portrait', 'landscape', 'gold', 'blue', 'red', 'sunset',
   'flowers', 'mountain', 'sea', 'forest', 'woman', 'man', 'child', 'city',
@@ -116,6 +140,7 @@ class MetArtProvider {
     this.usedKeywords = [];
     this.customKeywords = [];
     this._keywordVersion = 0;
+    this._refillCount = 0;
   }
 
   setCustomKeywords(keywords) {
@@ -160,12 +185,44 @@ class MetArtProvider {
     return fresh[Math.floor(Math.random() * fresh.length)];
   }
 
+  static getRandomYearRange() {
+    const period = ART_PERIODS[Math.floor(Math.random() * ART_PERIODS.length)];
+    const span = period[1] - period[0];
+    // Pick a ~50-200 year window within the period
+    const windowSize = Math.min(200, Math.max(50, Math.floor(Math.random() * span * 0.6)));
+    const offset = Math.floor(Math.random() * (span - windowSize));
+    return {
+      dateBegin: period[0] + offset,
+      dateEnd: period[0] + offset + windowSize,
+    };
+  }
+
   async refillPool() {
     if (this.refillPromise) {
       return this.refillPromise;
     }
 
-    this.refillPromise = this.refillPoolOnce();
+    // Alternate between standard keyword search and year-range-randomized search
+    // so the same keyword can produce different result sets over time.
+    this._refillCount++;
+    const useYearRange = this._refillCount % 2 === 0;
+    const yearRange = useYearRange ? MetArtProvider.getRandomYearRange() : null;
+
+    // Run 3 keyword searches in parallel for faster pool accumulation.
+    // Pick unique keywords for each slot.
+    const keywords = [];
+    for (let i = 0; i < 3; i++) {
+      const kw = this.pickKeyword();
+      if (kw) keywords.push(kw);
+    }
+
+    if (keywords.length === 0) {
+      this.refillPromise = Promise.resolve();
+      return this.refillPromise;
+    }
+
+    const searches = keywords.map(kw => this.refillPoolOnce({ keyword: kw, yearRange }));
+    this.refillPromise = Promise.all(searches).catch(() => {});
 
     try {
       return await this.refillPromise;
@@ -174,10 +231,15 @@ class MetArtProvider {
     }
   }
 
-  async refillPoolOnce() {
+  async refillPoolOnce({ keyword, yearRange } = {}) {
     const versionAtStart = this._keywordVersion || 0;
-    const keyword = this.pickKeyword();
-    const url = `${BASE_URL}/search?q=${encodeURIComponent(keyword)}&hasImages=true&isPublicDomain=true&resultsPerPage=100`;
+    const kw = keyword || this.pickKeyword();
+    let url = `${BASE_URL}/search?q=${encodeURIComponent(kw)}&hasImages=true`;
+
+    if (yearRange) {
+      url += `&dateBegin=${yearRange.dateBegin}&dateEnd=${yearRange.dateEnd}`;
+    }
+
     const result = await fetchJSON(url);
 
     // If keywords changed while we were fetching, discard stale results.
@@ -229,6 +291,12 @@ class MetArtProvider {
           } finally {
             this.customKeywords = savedCustom;
           }
+        }
+        // Last resort: force a year-range search — this produces a different
+        // subset of results than keyword-only searches, so it can uncover IDs
+        // that broad keyword searches might not reach.
+        if (this.pool.length === 0) {
+          await this.refillPoolOnce({ yearRange: MetArtProvider.getRandomYearRange() });
         }
         if (this.pool.length === 0) return null;
       }
@@ -289,7 +357,13 @@ class MetArtProvider {
     this.prefetchPromise = this.fetchPrefetchedArtwork(id);
 
     try {
-      return await this.prefetchPromise;
+      const result = await this.prefetchPromise;
+      if (!result) {
+        // Prefetch failed (network error or undisplayable) — reclaim the ID
+        // so it can be retried or filtered naturally by getNextSerial.
+        this.addToPool([id]);
+      }
+      return result;
     } finally {
       if (this.prefetchId === id) {
         this.prefetchId = null;
@@ -475,6 +549,18 @@ class MetArtProvider {
     if (this.displayedIds.size > DISPLAYED_HISTORY_LIMIT) {
       const oldIds = [...this.displayedIds].slice(0, DISPLAYED_HISTORY_TRIM_COUNT);
       oldIds.forEach(oldId => this.displayedIds.delete(oldId));
+    }
+  }
+
+  getDisplayedIds() {
+    return [...this.displayedIds];
+  }
+
+  loadDisplayedIds(ids) {
+    if (!Array.isArray(ids)) return;
+    for (const rawId of ids) {
+      const id = normalizeObjectId(rawId);
+      if (id !== null) this.displayedIds.add(id);
     }
   }
 }
