@@ -16,6 +16,20 @@ let currentLoadId = 0;
 let consecutiveFailures = 0;
 const MAX_CONSECUTIVE_FAILURES = 5;
 
+// Zoom state
+let zoomLevel = 1;
+let panX = 0;
+let panY = 0;
+let isPanning = false;
+let panStartX = 0;
+let panStartY = 0;
+let panStartPanX = 0;
+let panStartPanY = 0;
+const MIN_ZOOM = 1;
+const ZOOM_STEP = 0.2;
+let zoomIndicatorTimer = null;
+const zoomIndicator = document.getElementById('zoom-indicator');
+
 function withTimeout(promise, ms) {
   return Promise.race([
     promise,
@@ -32,7 +46,68 @@ function clearTimers() {
   retryTimer = null;
 }
 
+function applyTransform() {
+  const container = document.getElementById('artwork-container');
+  if (zoomLevel <= 1) {
+    img.style.transform = 'none';
+    container.style.cursor = '';
+  } else {
+    img.style.transform = `translate(${panX}px, ${panY}px) scale(${zoomLevel})`;
+    container.style.cursor = 'grab';
+  }
+}
+
+function updateZoomIndicator() {
+  zoomIndicator.textContent = `${Math.round(zoomLevel * 100)}%`;
+  zoomIndicator.classList.add('visible');
+  clearTimeout(zoomIndicatorTimer);
+  zoomIndicatorTimer = setTimeout(() => {
+    zoomIndicator.classList.remove('visible');
+  }, 1500);
+}
+
+function setZoom(newLevel, cursorX, cursorY) {
+  const oldZoom = zoomLevel;
+  zoomLevel = Math.max(MIN_ZOOM, newLevel);
+  if (zoomLevel === oldZoom) return;
+
+  if (zoomLevel <= 1) {
+    zoomLevel = 1;
+    panX = 0;
+    panY = 0;
+    applyTransform();
+    updateZoomIndicator();
+    return;
+  }
+
+  const container = document.getElementById('artwork-container');
+  const rect = container.getBoundingClientRect();
+  const cx = cursorX - rect.left;
+  const cy = cursorY - rect.top;
+
+  const contentX = (cx - panX) / oldZoom;
+  const contentY = (cy - panY) / oldZoom;
+
+  panX = cx - contentX * zoomLevel;
+  panY = cy - contentY * zoomLevel;
+
+  applyTransform();
+  updateZoomIndicator();
+}
+
+function resetZoom() {
+  if (zoomLevel === 1 && panX === 0 && panY === 0) return;
+  zoomLevel = 1;
+  panX = 0;
+  panY = 0;
+  isPanning = false;
+  img.style.transform = 'none';
+  document.getElementById('artwork-container').style.cursor = '';
+  zoomIndicator.classList.remove('visible');
+}
+
 async function loadArtwork() {
+  resetZoom();
   clearTimers();
   const loadId = ++currentLoadId;
   loading.classList.remove('hidden');
@@ -115,6 +190,13 @@ function loadImage(url) {
 
 function displayInfo(artwork) {
   artTitle.textContent = artwork.title;
+  artTitle.style.cursor = 'pointer';
+  artTitle.title = 'Click to view on metmuseum.org';
+  artTitle.onclick = () => {
+    if (artwork.objectUrl) {
+      window.artShow.openExternalUrl(artwork.objectUrl);
+    }
+  };
   artArtist.textContent = [artwork.artist, artwork.date].filter(Boolean).join(', ');
   artMedium.textContent = artwork.medium;
   artMuseum.textContent = artwork.museum;
@@ -220,6 +302,57 @@ async function init() {
   document.addEventListener('contextmenu', (e) => {
     e.preventDefault();
     window.artShow.showContextMenu();
+  });
+
+  // Zoom: mouse wheel on artwork container
+  const container = document.getElementById('artwork-container');
+  container.addEventListener('wheel', (e) => {
+    if (!img.classList.contains('loaded')) return;
+    e.preventDefault();
+    const delta = e.deltaY > 0 ? -ZOOM_STEP : ZOOM_STEP;
+    setZoom(zoomLevel + delta, e.clientX, e.clientY);
+  }, { passive: false });
+
+  // Drag to pan when zoomed in
+  container.addEventListener('mousedown', (e) => {
+    if (zoomLevel <= 1) return;
+    if (e.button !== 0) return;
+    if (e.target.closest('#info-trigger, #info-overlay')) return;
+
+    isPanning = true;
+    panStartX = e.clientX;
+    panStartY = e.clientY;
+    panStartPanX = panX;
+    panStartPanY = panY;
+    container.style.cursor = 'grabbing';
+    e.preventDefault();
+  });
+
+  document.addEventListener('mousemove', (e) => {
+    if (!isPanning) return;
+    const dx = e.clientX - panStartX;
+    const dy = e.clientY - panStartY;
+    panX = panStartPanX + dx;
+    panY = panStartPanY + dy;
+    applyTransform();
+  });
+
+  document.addEventListener('mouseup', () => {
+    if (!isPanning) return;
+    isPanning = false;
+    container.style.cursor = zoomLevel > 1 ? 'grab' : '';
+  });
+
+  // Cancel pan if window loses focus
+  window.addEventListener('blur', () => {
+    if (!isPanning) return;
+    isPanning = false;
+    container.style.cursor = zoomLevel > 1 ? 'grab' : '';
+  });
+
+  // Double-click to reset zoom
+  container.addEventListener('dblclick', () => {
+    resetZoom();
   });
 
   await loadArtwork();

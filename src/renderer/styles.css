@@ -27,13 +27,25 @@ html, body {
   position: relative;
 }
 
-/* Entire artwork area is draggable by default */
+/* Thin draggable strip at the very top for window dragging */
+#drag-handle {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 6px;
+  z-index: 100;
+  -webkit-app-region: drag;
+  cursor: move;
+}
+
+/* Artwork container — no drag, so wheel events and hover interactions work */
 #artwork-container {
   flex: 1;
   position: relative;
   overflow: hidden;
   background: rgba(26, 22, 18, 0.65);
-  -webkit-app-region: drag;
+  -webkit-app-region: no-drag;
 }
 
 /* Classic gold picture frame overlay */
@@ -62,10 +74,6 @@ html, body {
     0 3px 8px rgba(0, 0, 0, 0.2);
 }
 
-/* When hovering, switch to no-drag so info overlay works */
-#artwork-container:hover {
-  -webkit-app-region: no-drag;
-}
 
 #artwork-img {
   position: absolute;
@@ -76,8 +84,9 @@ html, body {
   padding: 20px;
   object-fit: contain;
   opacity: 0;
-  transition: opacity 0.4s ease;
+  transition: opacity 0.4s ease, transform 0.08s ease;
   pointer-events: none;
+  transform-origin: 0 0;
 }
 
 #artwork-img.loaded {
@@ -86,6 +95,28 @@ html, body {
 
 #artwork-img.fading {
   opacity: 0;
+}
+
+/* Zoom indicator — top-right badge */
+#zoom-indicator {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 6;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-size: 11px;
+  line-height: 1.4;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  pointer-events: none;
+  -webkit-app-region: no-drag;
+}
+
+#zoom-indicator.visible {
+  opacity: 1;
 }
 
 #loading {
@@ -170,6 +201,11 @@ html, body {
   color: #fff;
   margin-bottom: 4px;
   line-height: 1.3;
+}
+
+#art-title:hover {
+  color: #d4af37;
+  text-decoration: underline;
 }
 
 .info-line {
