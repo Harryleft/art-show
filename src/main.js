@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Menu, Tray, ipcMain, screen } = require('electron');
+const { app, BrowserWindow, Menu, Tray, ipcMain, screen, shell } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const { MetArtProvider } = require('./api/met-api');
@@ -210,6 +210,12 @@ ipcMain.handle('adjust-window-size', (_event, imgWidth, imgHeight) => {
     newH = Math.max(MIN_H, Math.min(MAX_H, newH));
 
     mainWindow.setSize(newW, newH);
+  });
+
+  ipcMain.handle('open-external-url', (_event, url) => {
+    if (typeof url === 'string' && url.startsWith('https://')) {
+      shell.openExternal(url);
+    }
   });
 
   ipcMain.handle('get-config', () => config);

@@ -8,6 +8,7 @@ contextBridge.exposeInMainWorld('artShow', {
   setKeywords: (keywords) => ipcRenderer.invoke('set-keywords', keywords),
   showContextMenu: () => ipcRenderer.invoke('show-context-menu'),
   adjustWindowSize: (width, height) => ipcRenderer.invoke('adjust-window-size', width, height),
+  openExternalUrl: (url) => ipcRenderer.invoke('open-external-url', url),
   onNextArtwork: (callback) => {
     const listener = (_event, ...args) => callback(...args);
     ipcRenderer.on('next-artwork', listener);
