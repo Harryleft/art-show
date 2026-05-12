@@ -51,9 +51,13 @@ function applyTransform() {
   if (zoomLevel <= 1) {
     img.style.transform = 'none';
     container.style.cursor = '';
+    container.classList.remove('no-drag-region');
+    container.classList.add('drag-region');
   } else {
     img.style.transform = `translate(${panX}px, ${panY}px) scale(${zoomLevel})`;
     container.style.cursor = 'grab';
+    container.classList.remove('drag-region');
+    container.classList.add('no-drag-region');
   }
 }
 
@@ -101,8 +105,7 @@ function resetZoom() {
   panX = 0;
   panY = 0;
   isPanning = false;
-  img.style.transform = 'none';
-  document.getElementById('artwork-container').style.cursor = '';
+  applyTransform();
   zoomIndicator.classList.remove('visible');
 }
 
@@ -354,6 +357,9 @@ async function init() {
   container.addEventListener('dblclick', () => {
     resetZoom();
   });
+
+  // Initialize drag region: at zoom 1, the entire painting area is draggable for window movement
+  applyTransform();
 
   await loadArtwork();
 }

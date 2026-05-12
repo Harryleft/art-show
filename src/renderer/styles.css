@@ -48,7 +48,16 @@ html, body {
     /* Subtle paper texture gradient for the mat board */
     radial-gradient(ellipse at 30% 40%, rgba(248, 244, 235, 0.4) 0%, transparent 60%),
     linear-gradient(135deg, #ede8dd 0%, #f5f1e8 30%, #e8e2d4 60%, #f0ebe0 100%);
+}
+
+/* Dynamic drag region: toggled by JS based on zoom level */
+#artwork-container.drag-region {
+  -webkit-app-region: drag;
+  app-region: drag;
+}
+#artwork-container.no-drag-region {
   -webkit-app-region: no-drag;
+  app-region: no-drag;
 }
 
 
