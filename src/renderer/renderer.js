@@ -27,6 +27,7 @@ let panStartPanX = 0;
 let panStartPanY = 0;
 const MIN_ZOOM = 1;
 const ZOOM_STEP = 0.2;
+const IMAGE_EDGE_CROP_SCALE = 1.025;
 let zoomIndicatorTimer = null;
 const zoomIndicator = document.getElementById('zoom-indicator');
 
@@ -46,15 +47,30 @@ function clearTimers() {
   retryTimer = null;
 }
 
+function getStageRect() {
+  return document.getElementById('artwork-stage').getBoundingClientRect();
+}
+
+function getCenteredCropOffset(scale) {
+  const rect = getStageRect();
+  return {
+    x: -((scale - 1) * rect.width) / 2,
+    y: -((scale - 1) * rect.height) / 2,
+  };
+}
+
 function applyTransform() {
   const container = document.getElementById('artwork-container');
+  const totalScale = zoomLevel * IMAGE_EDGE_CROP_SCALE;
+  const cropOffset = getCenteredCropOffset(totalScale);
+
   if (zoomLevel <= 1) {
-    img.style.transform = 'none';
+    img.style.transform = `translate(${cropOffset.x}px, ${cropOffset.y}px) scale(${totalScale})`;
     container.style.cursor = '';
     container.classList.remove('no-drag-region');
     container.classList.add('drag-region');
   } else {
-    img.style.transform = `translate(${panX}px, ${panY}px) scale(${zoomLevel})`;
+    img.style.transform = `translate(${panX + cropOffset.x}px, ${panY + cropOffset.y}px) scale(${totalScale})`;
     container.style.cursor = 'grab';
     container.classList.remove('drag-region');
     container.classList.add('no-drag-region');
@@ -84,16 +100,20 @@ function setZoom(newLevel, cursorX, cursorY) {
     return;
   }
 
-  const container = document.getElementById('artwork-container');
-  const rect = container.getBoundingClientRect();
+  const rect = getStageRect();
   const cx = cursorX - rect.left;
   const cy = cursorY - rect.top;
 
-  const contentX = (cx - panX) / oldZoom;
-  const contentY = (cy - panY) / oldZoom;
+  const oldTotalScale = oldZoom * IMAGE_EDGE_CROP_SCALE;
+  const newTotalScale = zoomLevel * IMAGE_EDGE_CROP_SCALE;
+  const oldCropOffset = getCenteredCropOffset(oldTotalScale);
+  const newCropOffset = getCenteredCropOffset(newTotalScale);
 
-  panX = cx - contentX * zoomLevel;
-  panY = cy - contentY * zoomLevel;
+  const contentX = (cx - panX - oldCropOffset.x) / oldTotalScale;
+  const contentY = (cy - panY - oldCropOffset.y) / oldTotalScale;
+
+  panX = cx - newCropOffset.x - contentX * newTotalScale;
+  panY = cy - newCropOffset.y - contentY * newTotalScale;
 
   applyTransform();
   updateZoomIndicator();

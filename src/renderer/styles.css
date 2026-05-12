@@ -79,12 +79,16 @@ html, body {
 }
 
 
-#artwork-img {
+#artwork-stage {
   position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  inset: 28px;
+  overflow: hidden;
+  background: #ede8dd;
+}
+
+#artwork-img {
+  width: 100%;
+  height: 100%;
   object-fit: contain;
   opacity: 0;
   transition: opacity 0.4s ease, transform 0.08s ease;
@@ -93,6 +97,7 @@ html, body {
   /* Match the container's mat color so empty areas from object-fit: contain
      don't go transparent in the transparent window */
   background: #ede8dd;
+  display: block;
 }
 
 #artwork-img.loaded {
