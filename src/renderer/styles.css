@@ -39,15 +39,33 @@ html, body {
   cursor: move;
 }
 
-/* Artwork container — no drag, so wheel events and hover interactions work */
+/* Artwork container — hosts the mat board and frame */
 #artwork-container {
   flex: 1;
   position: relative;
   overflow: hidden;
+  /* Mat padding — white border area around the artwork */
+  padding: 28px;
   background:
     /* Subtle paper texture gradient for the mat board */
     radial-gradient(ellipse at 30% 40%, rgba(248, 244, 235, 0.4) 0%, transparent 60%),
     linear-gradient(135deg, #ede8dd 0%, #f5f1e8 30%, #e8e2d4 60%, #f0ebe0 100%);
+
+  /* Gold frame as inset box-shadow on the container (a <div>, not a replaced
+     element, so it avoids the anti-aliasing artifacts that the <img> suffered) */
+  box-shadow:
+    /* Mat vignette — soft depth on the mat surface */
+    inset 0 0 24px rgba(0, 0, 0, 0.06),
+    /* Inner rabbet — subtle shadow from frame lip onto mat */
+    inset 0 0 4px rgba(0, 0, 0, 0.2),
+    /* Frame body — alternating dark/light bands for bevel illusion */
+    inset 0 0 0 2px #2a1a00,
+    inset 0 0 0 5px #7a5e1a,
+    inset 0 0 0 8px #c9a84c,
+    inset 0 0 0 11px #d4af37,
+    inset 0 0 0 14px #b8942e,
+    inset 0 0 0 17px #f0d68a,
+    inset 0 0 0 19px #5a4210;
 }
 
 /* Dynamic drag region: toggled by JS based on zoom level */
@@ -65,34 +83,16 @@ html, body {
   position: absolute;
   top: 0;
   left: 0;
-  width: 100%;
-  height: 100%;
-  padding: 28px;
+  right: 0;
+  bottom: 0;
   object-fit: contain;
   opacity: 0;
   transition: opacity 0.4s ease, transform 0.08s ease;
   pointer-events: none;
   transform-origin: 0 0;
-  /* 填充 padding-box 区域，避免 transparent window 合成时
-     可替换元素的 padding 区显示为黑色 */
+  /* Match the container's mat color so empty areas from object-fit: contain
+     don't go transparent in the transparent window */
   background: #ede8dd;
-
-  /* 3D gold frame — inset box-shadow on the img itself, rendered in the
-     padding area below the image content (object-fit: contain). No separate
-     ::before pseudo-element means no compositing layer to block events. */
-  box-shadow:
-    /* Mat vignette — soft depth on the mat surface */
-    inset 0 0 24px rgba(0, 0, 0, 0.06),
-    /* Inner rabbet — shadow from the frame lip onto the mat */
-    inset 0 0 4px rgba(0, 0, 0, 0.5),
-    /* Frame body — alternating dark/light bands for bevel illusion */
-    inset 0 0 0 2px #2a1a00,
-    inset 0 0 0 5px #7a5e1a,
-    inset 0 0 0 8px #c9a84c,
-    inset 0 0 0 11px #d4af37,
-    inset 0 0 0 14px #b8942e,
-    inset 0 0 0 17px #f0d68a,
-    inset 0 0 0 19px #5a4210;
 }
 
 #artwork-img.loaded {
