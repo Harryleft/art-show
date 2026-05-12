@@ -44,34 +44,11 @@ html, body {
   flex: 1;
   position: relative;
   overflow: hidden;
-  background: rgba(26, 22, 18, 0.65);
+  background:
+    /* Subtle paper texture gradient for the mat board */
+    radial-gradient(ellipse at 30% 40%, rgba(248, 244, 235, 0.4) 0%, transparent 60%),
+    linear-gradient(135deg, #ede8dd 0%, #f5f1e8 30%, #e8e2d4 60%, #f0ebe0 100%);
   -webkit-app-region: no-drag;
-}
-
-/* Classic gold picture frame overlay */
-#artwork-container::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  z-index: 5;
-  pointer-events: none;
-
-  /* 3D gold frame achieved through layered inset box-shadows.
-     Each layer adds a band of the frame, alternating dark/light
-     to simulate a beveled gilded surface. */
-  box-shadow:
-    /* Inner rabbet — shadow from the frame lip onto the mat */
-    inset 0 0 4px rgba(0, 0, 0, 0.5),
-    /* Frame body — alternating dark/light bands for bevel illusion */
-    inset 0 0 0 2px #2a1a00,
-    inset 0 0 0 5px #7a5e1a,
-    inset 0 0 0 8px #c9a84c,
-    inset 0 0 0 11px #d4af37,
-    inset 0 0 0 14px #b8942e,
-    inset 0 0 0 17px #f0d68a,
-    inset 0 0 0 19px #5a4210,
-    /* Subtle drop shadow against the desktop background */
-    0 3px 8px rgba(0, 0, 0, 0.2);
 }
 
 
@@ -81,12 +58,32 @@ html, body {
   left: 0;
   width: 100%;
   height: 100%;
-  padding: 20px;
+  padding: 28px;
   object-fit: contain;
   opacity: 0;
   transition: opacity 0.4s ease, transform 0.08s ease;
   pointer-events: none;
   transform-origin: 0 0;
+  /* 填充 padding-box 区域，避免 transparent window 合成时
+     可替换元素的 padding 区显示为黑色 */
+  background: #ede8dd;
+
+  /* 3D gold frame — inset box-shadow on the img itself, rendered in the
+     padding area below the image content (object-fit: contain). No separate
+     ::before pseudo-element means no compositing layer to block events. */
+  box-shadow:
+    /* Mat vignette — soft depth on the mat surface */
+    inset 0 0 24px rgba(0, 0, 0, 0.06),
+    /* Inner rabbet — shadow from the frame lip onto the mat */
+    inset 0 0 4px rgba(0, 0, 0, 0.5),
+    /* Frame body — alternating dark/light bands for bevel illusion */
+    inset 0 0 0 2px #2a1a00,
+    inset 0 0 0 5px #7a5e1a,
+    inset 0 0 0 8px #c9a84c,
+    inset 0 0 0 11px #d4af37,
+    inset 0 0 0 14px #b8942e,
+    inset 0 0 0 17px #f0d68a,
+    inset 0 0 0 19px #5a4210;
 }
 
 #artwork-img.loaded {
