@@ -320,6 +320,22 @@ class MetArtProvider {
       }
     }
 
+    if (this.customKeywords.length > 0 && !customKeywordFailed) {
+      customKeywordFailed = true;
+      const savedCustom = this.customKeywords;
+      this.customKeywords = [];
+      this.usedKeywords = [];
+      this.pool = [];
+      this.poolIds = new Set();
+
+      try {
+        return await this.getNextSerial();
+      } finally {
+        this.customKeywords = savedCustom;
+        this.usedKeywords = [];
+      }
+    }
+
     return null;
   }
 

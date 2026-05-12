@@ -156,9 +156,11 @@ async function loadArtwork() {
 
     // Resize window to match image aspect ratio
     if (result && result.width && result.height) {
-      window.artShow.adjustWindowSize(result.width, result.height);
+      await window.artShow.adjustWindowSize(result.width, result.height);
+      applyTransform();
     }
 
+    loading.classList.add('hidden');
     consecutiveFailures = 0;
     displayInfo(artwork);
     startCountdown();
