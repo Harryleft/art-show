@@ -86,6 +86,15 @@ html, body {
   background: #ede8dd;
 }
 
+#artwork-stage::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  box-shadow: inset 0 0 0 5px #ede8dd;
+}
+
 #artwork-img {
   width: 100%;
   height: 100%;

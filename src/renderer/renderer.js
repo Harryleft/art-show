@@ -27,7 +27,7 @@ let panStartPanX = 0;
 let panStartPanY = 0;
 const MIN_ZOOM = 1;
 const ZOOM_STEP = 0.2;
-const IMAGE_EDGE_CROP_SCALE = 1.025;
+const IMAGE_EDGE_CROP_SCALE = 1.05;
 let zoomIndicatorTimer = null;
 const zoomIndicator = document.getElementById('zoom-indicator');
 
